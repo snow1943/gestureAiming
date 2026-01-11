@@ -676,7 +676,11 @@
             } else {
                 document.getElementById('left-hand-status').textContent = 'NOT DETECTED';
                 document.getElementById('left-hand-detail').textContent = '-';
-                // 左手未检测时不做任何处理
+                // 左手未检测时默认显示Hello
+                if (currentText !== 'Hello') {
+                    currentText = 'Hello';
+                    generateTextTarget('Hello', 0x00FFFF);
+                }
             }
 
             // 右手状态
@@ -699,28 +703,35 @@
             let newColor = 0x00FFFF;
 
             switch (fingerCount) {
-                case 1:
+                case 0:
                     newText = 'Hello';
                     newColor = 0x00FFFF; // 霓虹蓝
                     currentMode = 'text';
                     break;
-                case 2:
+                case 1:
                     newText = '我是Aiming';
                     newColor = 0xFFFF00; // 霓虹黄
                     currentMode = 'text';
                     break;
-                case 3:
+                case 2:
                     newText = '太有用了';
                     newColor = 0xFF00FF; // 霓虹粉
                     currentMode = 'text';
                     break;
-                case 4:
+                case 3:
                     newText = '再见';
                     newColor = 0x00FF88; // 霓虹绿
                     currentMode = 'text';
                     break;
+                case 4:
+                    newText = 'Good Job';
+                    newColor = 0xFF6600; // 橙色
+                    currentMode = 'text';
+                    break;
                 case 5:
-                    currentMode = 'catch';
+                    newText = 'Amazing';
+                    newColor = 0xFF0088; // 玫红色
+                    currentMode = 'text';
                     break;
             }
 

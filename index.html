@@ -470,7 +470,7 @@
             }
 
             // 外圈发射粒子（烟花效果）- 形成明显的圆环
-            const sparkCount = Math.floor(samples * 0.35); // 增加到35%
+            const sparkCount = Math.floor(samples * 0.45); // 增加到45%，让圆环更明显
             for (let i = 0; i < sparkCount; i++) {
                 // 均匀分布形成圆环
                 const angle = (i / sparkCount) * Math.PI * 2;
@@ -805,8 +805,8 @@
                             Math.sin(finalAngle) * sparkProgress * 40;
                         targetZ = particleData.z + Math.sin(time * 2 + i) * 5;
 
-                        // 火花颜色：白色
-                        targetColor = new THREE.Color(0xFFFFFF);
+                        // 火花颜色：淡黄色（像火花一样）
+                        targetColor = new THREE.Color(0xFFFF99);
                     } else {
                         // 其他粒子应用旋转
                         targetX = Math.cos(rotatedAngle) * distance;

@@ -840,10 +840,9 @@
             // 奇异博士传送门模式下快速旋转
             if (comboMode) {
                 particleSystem.rotation.z += 0.03; // 快速Z轴旋转，模拟传送门旋转
-                particleSystem.rotation.y += 0.015; // Y轴旋转增加立体感
+                // 不旋转Y轴，保持传送门是正圆
             } else {
-                particleSystem.rotation.y *= 0.95; // 逐渐停止旋转
-                particleSystem.rotation.z *= 0.95;
+                particleSystem.rotation.z *= 0.95; // 逐渐停止旋转
             }
 
             particleSystem.geometry.attributes.position.needsUpdate = true;

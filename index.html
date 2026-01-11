@@ -671,11 +671,12 @@
                 document.getElementById('left-hand-status').textContent = 'DETECTED';
                 document.getElementById('left-hand-detail').textContent = `Fingers: ${fingers}`;
 
-                // 根据手指数切换目标形状
+                // 只有检测到左手时才处理手势
                 handleLeftHandGesture(fingers);
             } else {
                 document.getElementById('left-hand-status').textContent = 'NOT DETECTED';
                 document.getElementById('left-hand-detail').textContent = '-';
+                // 左手未检测时不做任何处理
             }
 
             // 右手状态
@@ -737,16 +738,11 @@
         function updateParticles() {
             time += 0.016;
 
-            // 检测双手组合模式
-            comboMode = leftHandData && leftHandData.extendedFingers === 5 &&
-                rightHandData && rightHandData.extendedFingers === 5;
+            // 检测传送门模式（只需右手张开）
+            comboMode = rightHandData && rightHandData.extendedFingers === 5;
 
-            // 检测右手模式
-            if (rightHandData && rightHandData.extendedFingers === 5 && !comboMode) {
-                rightHandMode = 'nebula';
-            } else {
-                rightHandMode = 'normal';
-            }
+            // 检测右手模式（星云模式已被传送门替代，不再需要）
+            rightHandMode = 'normal';
 
             const positions = particleSystem.geometry.attributes.position.array;
             const colors = particleSystem.geometry.attributes.color.array;

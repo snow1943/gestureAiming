@@ -470,7 +470,7 @@
             }
 
             // 外圈发射粒子（烟花效果）- 形成明显的圆环
-            const sparkCount = Math.floor(samples * 0.25); // 增加到25%
+            const sparkCount = Math.floor(samples * 0.35); // 增加到35%
             for (let i = 0; i < sparkCount; i++) {
                 // 均匀分布形成圆环
                 const angle = (i / sparkCount) * Math.PI * 2;
@@ -770,9 +770,9 @@
                     const layer = particleData.layer || 0;
                     const type = particleData.type || 'fill';
 
-                    // 不同层的旋转速度和方向（加快10倍）
-                    const rotationSpeeds = [0.2, -0.15, 0.25, -0.1, 0.3]; // 交替方向，速度提高10倍
-                    const rotationSpeed = rotationSpeeds[layer % 5] || 0.2;
+                    // 不同层的旋转速度和方向（加快20倍）
+                    const rotationSpeeds = [0.4, -0.3, 0.5, -0.2, 0.6]; // 交替方向，速度提高20倍
+                    const rotationSpeed = rotationSpeeds[layer % 5] || 0.4;
 
                     // 计算旋转后的位置
                     const baseX = particleData.x;
@@ -783,12 +783,12 @@
 
                     // 火花粒子沿切线方向甩出（惯性效果）
                     if (type === 'spark') {
-                        // 外圈旋转速度（最快的一层）
-                        const outerRotationSpeed = 0.3;
+                        // 外圈旋转速度（最快的一层）- 更快
+                        const outerRotationSpeed = 0.8;
                         const currentAngle = baseAngle + outerRotationSpeed * time;
 
-                        // 火花发射距离（从外圈向外）
-                        const sparkProgress = (time * 3 + i * 0.1) % 10; // 循环周期
+                        // 火花发射距离（从外圈向外）- 更快
+                        const sparkProgress = (time * 6 + i * 0.1) % 8; // 循环周期更快
                         const sparkDistance = CONFIG.BASKETBALL_RADIUS * 1.4 + sparkProgress * 30;
 
                         // 切线方向（垂直于半径方向）
@@ -796,14 +796,17 @@
                         const radialAngle = currentAngle; // 径向
 
                         // 混合径向和切线方向，创造甩出效果
-                        const mixRatio = Math.min(sparkProgress / 3, 1); // 开始时更径向，后来更切向
+                        const mixRatio = Math.min(sparkProgress / 2, 1); // 更快转向切线
                         const finalAngle = radialAngle * (1 - mixRatio) + tangentAngle * mixRatio;
 
                         targetX = Math.cos(currentAngle) * CONFIG.BASKETBALL_RADIUS * 1.4 +
-                            Math.cos(finalAngle) * sparkProgress * 30;
+                            Math.cos(finalAngle) * sparkProgress * 40;
                         targetY = Math.sin(currentAngle) * CONFIG.BASKETBALL_RADIUS * 1.4 +
-                            Math.sin(finalAngle) * sparkProgress * 30;
+                            Math.sin(finalAngle) * sparkProgress * 40;
                         targetZ = particleData.z + Math.sin(time * 2 + i) * 5;
+
+                        // 火花颜色：白色
+                        targetColor = new THREE.Color(0xFFFFFF);
                     } else {
                         // 其他粒子应用旋转
                         targetX = Math.cos(rotatedAngle) * distance;
@@ -811,15 +814,17 @@
                         targetZ = particleData.z;
                     }
 
-                    // 奇异博士传送门颜色：金橙色火花渐变
-                    const distFromCenter = distance;
-                    const maxDist = CONFIG.BASKETBALL_RADIUS * 1.5;
-                    const colorMix = Math.min(distFromCenter / maxDist, 1);
+                    // 奇异博士传送门颜色：金橙色火花渐变（非火花粒子）
+                    if (type !== 'spark') {
+                        const distFromCenter = distance;
+                        const maxDist = CONFIG.BASKETBALL_RADIUS * 1.5;
+                        const colorMix = Math.min(distFromCenter / maxDist, 1);
 
-                    // 从亮金色(内)到橙红色(外)渐变，模拟火花效果
-                    const innerColor = new THREE.Color(0xFFFF99); // 亮金色
-                    const outerColor = new THREE.Color(0xFF6600); // 橙红色
-                    targetColor = innerColor.clone().lerp(outerColor, colorMix);
+                        // 从亮金色(内)到橙红色(外)渐变，模拟火花效果
+                        const innerColor = new THREE.Color(0xFFFF99); // 亮金色
+                        const outerColor = new THREE.Color(0xFF6600); // 橙红色
+                        targetColor = innerColor.clone().lerp(outerColor, colorMix);
+                    }
                 }
                 // ========== 右手星云模式 ==========
                 else if (rightHandMode === 'nebula') {

@@ -744,19 +744,16 @@
                 let targetX, targetY, targetZ;
                 let targetColor = currentTargetColor;
 
-                // ========== 双手组合：Gallifreyan模式 ==========
+                // ========== 双手组合：奇异博士传送门模式 ==========
                 if (comboMode) {
-                    // 生成Gallifreyan圆形文字目标位置
+                    // 生成传送门目标位置
                     if (!window.gallifreyanTargets || window.gallifreyanTargets.length !== CONFIG.PARTICLE_COUNT) {
                         window.gallifreyanTargets = generateGallifreyan(CONFIG.PARTICLE_COUNT, CONFIG.BASKETBALL_RADIUS);
                     }
 
-                    const leftPalm = leftHandData.palmCenter;
-                    const palmX = (0.5 - leftPalm.x) * window.innerWidth;
-                    const palmY = -(leftPalm.y - 0.5) * window.innerHeight;
-
-                    targetX = palmX + window.gallifreyanTargets[i].x;
-                    targetY = palmY + window.gallifreyanTargets[i].y;
+                    // 传送门固定在屏幕中心
+                    targetX = window.gallifreyanTargets[i].x;
+                    targetY = window.gallifreyanTargets[i].y;
                     targetZ = window.gallifreyanTargets[i].z;
 
                     // 奇异博士传送门颜色：金橙色火花渐变
@@ -771,11 +768,6 @@
                     const innerColor = new THREE.Color(0xFFFF99); // 亮金色
                     const outerColor = new THREE.Color(0xFF6600); // 橙红色
                     targetColor = innerColor.clone().lerp(outerColor, colorMix);
-
-                    // 弹跳轨迹效果
-                    const bounceFreq = 20;
-                    const bounceAmp = 15;
-                    particleVelocities[i].y += Math.sin(time * bounceFreq + i * 0.1) * bounceAmp;
                 }
                 // ========== 右手星云模式 ==========
                 else if (rightHandMode === 'nebula') {

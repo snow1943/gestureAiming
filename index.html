@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>赛博朋克粒子系统 | Cyberpunk Particle System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Orbitron', monospace;
+            background: #000;
+            overflow: hidden;
+            color: #00FFFF;
+        }
+
+        /* 摄像头背景视频 */
+        #video-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 0;
+            transform: scaleX(-1);
+            /* 镜像翻转 */
+        }
+
+        /* 黑色半透明遮罩 */
+        #video-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 0.5;
+            pointer-events: none;
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* 赛博朋克背景效果 */
+        #bg-effects {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* 移动网格 */
+        .grid-overlay {
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background-image:
+                linear-gradient(0deg, transparent 24%, rgba(0, 255, 255, 0.05) 25%, rgba(0, 255, 255, 0.05) 26%, transparent 27%, transparent 74%, rgba(0, 255, 255, 0.05) 75%, rgba(0, 255, 255, 0.05) 76%, transparent 77%, transparent),
+                linear-gradient(90deg, transparent 24%, rgba(0, 255, 255, 0.05) 25%, rgba(0, 255, 255, 0.05) 26%, transparent 27%, transparent 74%, rgba(0, 255, 255, 0.05) 75%, rgba(0, 255, 255, 0.05) 76%, transparent 77%, transparent);
+            background-size: 50px 50px;
+            animation: gridMove 20s linear infinite;
+        }
+
+        @keyframes gridMove {
+            0% {
+                transform: translate(0, 0);
+            }
+
+            100% {
+                transform: translate(50px, 50px);
+            }
+        }
+
+        /* 扫描线 */
+        .scanlines {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(0deg,
+                    rgba(0, 255, 255, 0.03) 0px,
+                    transparent 1px,
+                    transparent 2px,
+                    rgba(0, 255, 255, 0.03) 3px);
+            animation: scanlineMove 8s linear infinite;
+        }
+
+        @keyframes scanlineMove {
+            0% {
+                transform: translateY(0);
+            }
+
+            100% {
+                transform: translateY(100px);
+            }
+        }
+
+        /* 暗角效果 */
+        .vignette {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            box-shadow: inset 0 0 200px rgba(0, 0, 0, 0.9);
+            pointer-events: none;
+        }
+
+        /* HUD界面 */
+        .hud {
+            position: fixed;
+            z-index: 10;
+            font-size: 14px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            backdrop-filter: blur(5px);
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+        }
+
+        .hud-tl {
+            top: 20px;
+            left: 20px;
+        }
+
+        .hud-tr {
+            top: 20px;
+            right: 20px;
+        }
+
+        .hud-bl {
+            bottom: 20px;
+            left: 20px;
+        }
+
+        .hud-br {
+            bottom: 20px;
+            right: 20px;
+        }
+
+        .hud-label {
+            color: #00FFFF;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .hud-value {
+            color: #00FF88;
+            font-size: 18px;
+            font-weight: 900;
+        }
+
+        .hand-status {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #FF00FF;
+        }
+
+        /* 视频预览（用于MediaPipe处理，隐藏） */
+        #video-preview {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 200px;
+            height: 150px;
+            border: 2px solid #00FFFF;
+            z-index: 5;
+            display: none;
+            /* 默认隐藏，可以设为block查看摄像头 */
+        }
+
+        /* 加载提示 */
+        #loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 100;
+            font-size: 24px;
+            text-align: center;
+            color: #00FFFF;
+            text-shadow: 0 0 20px rgba(0, 255, 255, 1);
+        }
+
+        .loading-spinner {
+            border: 4px solid rgba(0, 255, 255, 0.1);
+            border-top: 4px solid #00FFFF;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 摄像头背景视频 -->
+    <video id="video-background" autoplay playsinline muted></video>
+
+    <!-- 黑色半透明遮罩 -->
+    <div id="video-overlay"></div>
+
+    <!-- 背景效果 -->
+    <div id="bg-effects">
+        <div class="grid-overlay"></div>
+        <div class="scanlines"></div>
+        <div class="vignette"></div>
+    </div>
+
+    <!-- Three.js 画布容器 -->
+    <div id="canvas-container"></div>
+
+    <!-- HUD 界面 -->
+    <div class="hud hud-tl">
+        <div class="hud-label">FPS</div>
+        <div class="hud-value" id="fps-display">60</div>
+    </div>
+
+    <div class="hud hud-tr">
+        <div class="hud-label">PARTICLES</div>
+        <div class="hud-value" id="particle-count">12000</div>
+    </div>
+
+    <div class="hud hud-bl">
+        <div class="hud-label">LEFT HAND</div>
+        <div class="hud-value" id="left-hand-status">NOT DETECTED</div>
+        <div class="hand-status" id="left-hand-detail">-</div>
+    </div>
+
+    <div class="hud hud-br">
+        <div class="hud-label">RIGHT HAND</div>
+        <div class="hud-value" id="right-hand-status">NOT DETECTED</div>
+        <div class="hand-status" id="right-hand-detail">-</div>
+    </div>
+
+    <!-- 视频预览 -->
+    <video id="video-preview" autoplay playsinline></video>
+
+    <!-- 加载提示 -->
+    <div id="loading">
+        <div class="loading-spinner"></div>
+        <div>INITIALIZING CYBERPUNK SYSTEM...</div>
+    </div>
+
+    <!-- Three.js -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.150.0/build/three.min.js"></script>
+
+    <!-- MediaPipe Hands -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+
+    <script>
+        // ==================== 全局配置 ====================
+        const CONFIG = {
+            PARTICLE_COUNT: 12000,
+            PARTICLE_SIZE: 2.4,
+            LERP_FACTOR: 0.16,
+            REPULSION_STRENGTH: 80,
+            REPULSION_RADIUS: 150,
+            TEXT_FONT_SIZE: 280,
+            BASKETBALL_RADIUS: 100,
+        };
+
+        // ==================== Three.js 场景初始化 ====================
+        let scene, camera, renderer, particles, particleSystem;
+        let particlePositions, particleColors, particleVelocities;
+        let targetPositions = [];
+        let currentTargetColor = new THREE.Color(0x00FFFF);
+
+        function initThreeJS() {
+            scene = new THREE.Scene();
+
+            camera = new THREE.PerspectiveCamera(
+                75,
+                window.innerWidth / window.innerHeight,
+                0.1,
+                2000
+            );
+            camera.position.z = 500;
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor(0x000000, 0);
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            // 初始化粒子系统
+            initParticles();
+
+            // 窗口大小调整
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function initParticles() {
+            const geometry = new THREE.BufferGeometry();
+            particlePositions = new Float32Array(CONFIG.PARTICLE_COUNT * 3);
+            particleColors = new Float32Array(CONFIG.PARTICLE_COUNT * 3);
+            particleVelocities = [];
+
+            // 随机初始化粒子
+            for (let i = 0; i < CONFIG.PARTICLE_COUNT; i++) {
+                particlePositions[i * 3] = (Math.random() - 0.5) * 1000;
+                particlePositions[i * 3 + 1] = (Math.random() - 0.5) * 1000;
+                particlePositions[i * 3 + 2] = (Math.random() - 0.5) * 200;
+
+                particleColors[i * 3] = 0;
+                particleColors[i * 3 + 1] = 1;
+                particleColors[i * 3 + 2] = 1;
+
+                particleVelocities.push({ x: 0, y: 0, z: 0 });
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(particleColors, 3));
+
+            const material = new THREE.PointsMaterial({
+                size: CONFIG.PARTICLE_SIZE,
+                blending: THREE.AdditiveBlending,
+                transparent: true,
+                vertexColors: true,
+                depthWrite: false
+            });
+
+            particleSystem = new THREE.Points(geometry, material);
+            scene.add(particleSystem);
+
+            // 默认生成"Hello"文字
+            generateTextTarget("Hello", 0x00FFFF);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // ==================== 文字坐标生成器 ====================
+        function generateTextCoordinates(text, fontSize = CONFIG.TEXT_FONT_SIZE) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            canvas.width = 2400;
+            canvas.height = 800;
+
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.font = `bold ${fontSize}px Arial`;
+            ctx.fillStyle = 'white';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const pixels = imageData.data;
+            const coordinates = [];
+
+            // 采样间隔（避免点太密集）
+            const step = 3;
+
+            for (let y = 0; y < canvas.height; y += step) {
+                for (let x = 0; x < canvas.width; x += step) {
+                    const index = (y * canvas.width + x) * 4;
+                    const brightness = pixels[index];
+
+                    if (brightness > 128) {
+                        coordinates.push({
+                            x: (x - canvas.width / 2) * 0.8,
+                            y: -(y - canvas.height / 2) * 0.8,
+                            z: 0
+                        });
+                    }
+                }
+            }
+
+            return coordinates;
+        }
+
+        function generateTextTarget(text, color) {
+            targetPositions = generateTextCoordinates(text);
+            currentTargetColor = new THREE.Color(color);
+
+            // 如果目标点少于粒子数，随机填充
+            while (targetPositions.length < CONFIG.PARTICLE_COUNT) {
+                const randomIndex = Math.floor(Math.random() * targetPositions.length);
+                targetPositions.push({ ...targetPositions[randomIndex] });
+            }
+
+            // 如果目标点多于粒子数，随机采样
+            if (targetPositions.length > CONFIG.PARTICLE_COUNT) {
+                const sampled = [];
+                for (let i = 0; i < CONFIG.PARTICLE_COUNT; i++) {
+                    const randomIndex = Math.floor(Math.random() * targetPositions.length);
+                    sampled.push(targetPositions[randomIndex]);
+                }
+                targetPositions = sampled;
+            }
+        }
+
+        // ==================== 斐波那契球分布 ====================
+        function generateFibonacciSphere(samples, radius) {
+            const points = [];
+            const phi = Math.PI * (3 - Math.sqrt(5)); // 黄金角
+
+            for (let i = 0; i < samples; i++) {
+                const y = 1 - (i / (samples - 1)) * 2;
+                const radiusAtY = Math.sqrt(1 - y * y);
+                const theta = phi * i;
+
+                points.push({
+                    x: Math.cos(theta) * radiusAtY * radius,
+                    y: y * radius,
+                    z: Math.sin(theta) * radiusAtY * radius
+                });
+            }
+
+            return points;
+        }
+
+        // ==================== MediaPipe Hands 初始化 ====================
+        let hands, camera_utils;
+        let leftHandData = null;
+        let rightHandData = null;
+
+        async function initMediaPipe() {
+            const videoElement = document.getElementById('video-preview');
+            const videoBackground = document.getElementById('video-background');
+
+            hands = new Hands({
+                locateFile: (file) => {
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+                }
+            });
+
+            hands.setOptions({
+                maxNumHands: 2,
+                modelComplexity: 1,
+                minDetectionConfidence: 0.7,
+                minTrackingConfidence: 0.5
+            });
+
+            hands.onResults(onHandsResults);
+
+            const camera = new Camera(videoElement, {
+                onFrame: async () => {
+                    await hands.send({ image: videoElement });
+                },
+                width: 1280,
+                height: 720
+            });
+
+            camera.start();
+
+            // 同步视频流到背景
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    videoBackground.srcObject = stream;
+                })
+                .catch(err => {
+                    console.error('无法访问摄像头:', err);
+                });
+
+            // 隐藏加载提示
+            setTimeout(() => {
+                document.getElementById('loading').style.display = 'none';
+            }, 2000);
+        }
+
+        // ==================== 手势检测结果处理 ====================
+        function onHandsResults(results) {
+            leftHandData = null;
+            rightHandData = null;
+
+            if (results.multiHandLandmarks && results.multiHandedness) {
+                for (let i = 0; i < results.multiHandLandmarks.length; i++) {
+                    const landmarks = results.multiHandLandmarks[i];
+                    const handedness = results.multiHandedness[i].label; // "Left" or "Right"
+
+                    const handData = {
+                        landmarks: landmarks,
+                        extendedFingers: countExtendedFingers(landmarks),
+                        indexTip: landmarks[8], // 食指指尖
+                        palmCenter: landmarks[9] // 手掌中心
+                    };
+
+                    // MediaPipe的Left/Right是镜像的，需要交换
+                    if (handedness === 'Right') {
+                        leftHandData = handData;
+                    } else {
+                        rightHandData = handData;
+                    }
+                }
+            }
+
+            updateHUD();
+        }
+
+        // ==================== 手指检测算法 ====================
+        function countExtendedFingers(landmarks) {
+            let count = 0;
+
+            // 拇指：比较x轴位置
+            if (Math.abs(landmarks[4].x - landmarks[3].x) > Math.abs(landmarks[3].x - landmarks[2].x)) {
+                count++;
+            }
+
+            // 其他四指：比较y轴位置（指尖 vs 指关节）
+            const fingerTips = [8, 12, 16, 20];
+            const fingerPIPs = [6, 10, 14, 18];
+
+            for (let i = 0; i < fingerTips.length; i++) {
+                if (landmarks[fingerTips[i]].y < landmarks[fingerPIPs[i]].y) {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        // ==================== HUD 更新 ====================
+        function updateHUD() {
+            // 左手状态
+            if (leftHandData) {
+                const fingers = leftHandData.extendedFingers;
+                document.getElementById('left-hand-status').textContent = 'DETECTED';
+                document.getElementById('left-hand-detail').textContent = `Fingers: ${fingers}`;
+
+                // 根据手指数切换目标形状
+                handleLeftHandGesture(fingers);
+            } else {
+                document.getElementById('left-hand-status').textContent = 'NOT DETECTED';
+                document.getElementById('left-hand-detail').textContent = '-';
+            }
+
+            // 右手状态
+            if (rightHandData) {
+                const fingers = rightHandData.extendedFingers;
+                document.getElementById('right-hand-status').textContent = 'DETECTED';
+                document.getElementById('right-hand-detail').textContent = `Fingers: ${fingers}`;
+            } else {
+                document.getElementById('right-hand-status').textContent = 'NOT DETECTED';
+                document.getElementById('right-hand-detail').textContent = '-';
+            }
+        }
+
+        // ==================== 左手手势处理 ====================
+        let currentMode = 'text';
+        let currentText = 'Hello';
+
+        function handleLeftHandGesture(fingerCount) {
+            let newText = currentText;
+            let newColor = 0x00FFFF;
+
+            switch (fingerCount) {
+                case 1:
+                    newText = 'Hello';
+                    newColor = 0x00FFFF; // 霓虹蓝
+                    currentMode = 'text';
+                    break;
+                case 2:
+                    newText = '我是Aiming';
+                    newColor = 0xFFFF00; // 霓虹黄
+                    currentMode = 'text';
+                    break;
+                case 3:
+                    newText = '太有用了';
+                    newColor = 0xFF00FF; // 霓虹粉
+                    currentMode = 'text';
+                    break;
+                case 4:
+                    newText = '再见';
+                    newColor = 0x00FF88; // 霓虹绿
+                    currentMode = 'text';
+                    break;
+                case 5:
+                    currentMode = 'catch';
+                    break;
+            }
+
+            if (currentMode === 'text' && newText !== currentText) {
+                currentText = newText;
+                generateTextTarget(newText, newColor);
+            }
+        }
+
+        // ==================== 粒子动画更新 ====================
+        let time = 0;
+        let rightHandMode = 'normal'; // 'normal' or 'nebula'
+        let comboMode = false; // 双手组合模式
+
+        function updateParticles() {
+            time += 0.016;
+
+            // 检测双手组合模式
+            comboMode = leftHandData && leftHandData.extendedFingers === 5 &&
+                rightHandData && rightHandData.extendedFingers === 5;
+
+            // 检测右手模式
+            if (rightHandData && rightHandData.extendedFingers === 5 && !comboMode) {
+                rightHandMode = 'nebula';
+            } else {
+                rightHandMode = 'normal';
+            }
+
+            const positions = particleSystem.geometry.attributes.position.array;
+            const colors = particleSystem.geometry.attributes.color.array;
+
+            for (let i = 0; i < CONFIG.PARTICLE_COUNT; i++) {
+                const i3 = i * 3;
+
+                let targetX, targetY, targetZ;
+                let targetColor = currentTargetColor;
+
+                // ========== 双手组合：篮球模式 ==========
+                if (comboMode) {
+                    // 生成篮球目标位置
+                    if (!window.basketballTargets || window.basketballTargets.length !== CONFIG.PARTICLE_COUNT) {
+                        window.basketballTargets = generateFibonacciSphere(CONFIG.PARTICLE_COUNT, CONFIG.BASKETBALL_RADIUS);
+                    }
+
+                    const leftPalm = leftHandData.palmCenter;
+                    const palmX = (0.5 - leftPalm.x) * window.innerWidth;
+                    const palmY = -(leftPalm.y - 0.5) * window.innerHeight;
+
+                    targetX = palmX + window.basketballTargets[i].x;
+                    targetY = palmY + window.basketballTargets[i].y;
+                    targetZ = window.basketballTargets[i].z;
+
+                    // 篮球颜色：橙色
+                    targetColor = new THREE.Color(0xFF8800);
+
+                    // 弹跳轨迹效果
+                    const bounceFreq = 20;
+                    const bounceAmp = 15;
+                    particleVelocities[i].y += Math.sin(time * bounceFreq + i * 0.1) * bounceAmp;
+                }
+                // ========== 右手星云模式 ==========
+                else if (rightHandMode === 'nebula') {
+                    targetX = (Math.random() - 0.5) * window.innerWidth * 1.5;
+                    targetY = (Math.random() - 0.5) * window.innerHeight * 1.5;
+                    targetZ = (Math.random() - 0.5) * 400;
+
+                    // 水波纹效果
+                    if (rightHandData) {
+                        const indexTip = rightHandData.indexTip;
+                        const tipX = (0.5 - indexTip.x) * window.innerWidth;
+                        const tipY = -(indexTip.y - 0.5) * window.innerHeight;
+
+                        const dx = positions[i3] - tipX;
+                        const dy = positions[i3 + 1] - tipY;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+
+                        if (dist < 300) {
+                            const wave = Math.sin(dist * 0.05 - time * 5) * 20;
+                            positions[i3 + 2] += wave * 0.1;
+                        }
+                    }
+                }
+                // ========== 正常文字模式 ==========
+                else {
+                    targetX = targetPositions[i].x;
+                    targetY = targetPositions[i].y;
+                    targetZ = targetPositions[i].z;
+                }
+
+                // ========== 右手斥力效果（仅在非星云模式） ==========
+                if (rightHandData && rightHandMode === 'normal' && !comboMode) {
+                    const indexTip = rightHandData.indexTip;
+                    const tipX = (0.5 - indexTip.x) * window.innerWidth;
+                    const tipY = -(indexTip.y - 0.5) * window.innerHeight;
+
+                    const dx = positions[i3] - tipX;
+                    const dy = positions[i3 + 1] - tipY;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < CONFIG.REPULSION_RADIUS) {
+                        const force = (1 - dist / CONFIG.REPULSION_RADIUS) * CONFIG.REPULSION_STRENGTH;
+                        particleVelocities[i].x += (dx / dist) * force;
+                        particleVelocities[i].y += (dy / dist) * force;
+                        // 纯XY平面斥力，不影响Z轴
+                    }
+                }
+
+                // ========== 速度衰减 ==========
+                particleVelocities[i].x *= 0.9;
+                particleVelocities[i].y *= 0.9;
+                particleVelocities[i].z *= 0.9;
+
+                // ========== 应用速度 ==========
+                positions[i3] += particleVelocities[i].x;
+                positions[i3 + 1] += particleVelocities[i].y;
+                positions[i3 + 2] += particleVelocities[i].z;
+
+                // ========== Lerp 到目标位置 ==========
+                positions[i3] += (targetX - positions[i3]) * CONFIG.LERP_FACTOR;
+                positions[i3 + 1] += (targetY - positions[i3 + 1]) * CONFIG.LERP_FACTOR;
+                positions[i3 + 2] += (targetZ - positions[i3 + 2]) * CONFIG.LERP_FACTOR;
+
+                // ========== 更新颜色 ==========
+                colors[i3] += (targetColor.r - colors[i3]) * 0.05;
+                colors[i3 + 1] += (targetColor.g - colors[i3 + 1]) * 0.05;
+                colors[i3 + 2] += (targetColor.b - colors[i3 + 2]) * 0.05;
+            }
+
+            // 篮球模式下添加旋转
+            if (comboMode) {
+                particleSystem.rotation.y += 0.01;
+            } else {
+                particleSystem.rotation.y *= 0.95; // 逐渐停止旋转
+            }
+
+            particleSystem.geometry.attributes.position.needsUpdate = true;
+            particleSystem.geometry.attributes.color.needsUpdate = true;
+        }
+
+        // ==================== FPS 计算 ====================
+        let lastTime = performance.now();
+        let frames = 0;
+        let fps = 60;
+
+        function calculateFPS() {
+            frames++;
+            const currentTime = performance.now();
+            if (currentTime >= lastTime + 1000) {
+                fps = Math.round((frames * 1000) / (currentTime - lastTime));
+                document.getElementById('fps-display').textContent = fps;
+                frames = 0;
+                lastTime = currentTime;
+            }
+        }
+
+        // ==================== 动画循环 ====================
+        function animate() {
+            requestAnimationFrame(animate);
+
+            updateParticles();
+            calculateFPS();
+
+            renderer.render(scene, camera);
+        }
+
+        // ==================== 启动应用 ====================
+        window.addEventListener('load', async () => {
+            initThreeJS();
+            await initMediaPipe();
+            animate();
+        });
+    </script>
+</body>
+
+</html>

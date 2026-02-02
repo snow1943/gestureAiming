@@ -641,21 +641,44 @@
             updateHUD();
         }
 
-        // ==================== 手指检测算法 ====================
+        // ==================== 手指检测算法（改进版） ====================
         function countExtendedFingers(landmarks) {
             let count = 0;
 
-            // 拇指：比较x轴位置
-            if (Math.abs(landmarks[4].x - landmarks[3].x) > Math.abs(landmarks[3].x - landmarks[2].x)) {
+            // 手腕位置
+            const wrist = landmarks[0];
+
+            // 计算距离平方的辅助函数
+            function distSq(a, b) {
+                const dx = a.x - b.x;
+                const dy = a.y - b.y;
+                return dx * dx + dy * dy;
+            }
+
+            // 拇指检测：比较指尖(4)到手腕的距离 vs IP关节(3)到手腕的距离
+            // 伸直时指尖应该更远
+            const thumbTipDist = distSq(landmarks[4], wrist);
+            const thumbIPDist = distSq(landmarks[3], wrist);
+            const thumbMCPDist = distSq(landmarks[2], wrist);
+
+            // 拇指伸直：指尖比IP关节远离手腕，且整体张开
+            if (thumbTipDist > thumbIPDist * 1.2 && thumbTipDist > thumbMCPDist * 1.5) {
                 count++;
             }
 
-            // 其他四指：比较y轴位置（指尖 vs 指关节）
-            const fingerTips = [8, 12, 16, 20];
-            const fingerPIPs = [6, 10, 14, 18];
+            // 其他四指：比较指尖到手腕的距离 vs PIP关节到手腕的距离
+            // 伸直时指尖应该比PIP关节远离手腕
+            const fingerTips = [8, 12, 16, 20];   // 食指、中指、无名指、小指指尖
+            const fingerPIPs = [6, 10, 14, 18];   // 对应的PIP关节
+            const fingerMCPs = [5, 9, 13, 17];    // 对应的MCP关节（指根）
 
             for (let i = 0; i < fingerTips.length; i++) {
-                if (landmarks[fingerTips[i]].y < landmarks[fingerPIPs[i]].y) {
+                const tipDist = distSq(landmarks[fingerTips[i]], wrist);
+                const pipDist = distSq(landmarks[fingerPIPs[i]], wrist);
+                const mcpDist = distSq(landmarks[fingerMCPs[i]], wrist);
+
+                // 手指伸直的条件：指尖比PIP关节远离手腕，且明显张开
+                if (tipDist > pipDist * 1.1 && tipDist > mcpDist * 1.3) {
                     count++;
                 }
             }
@@ -686,10 +709,13 @@
             // 右手状态
             if (rightHandData) {
                 const fingers = rightHandData.extendedFingers;
-                document.getElementById('right-hand-status').textContent = 'DETECTED';
+                const isPortalMode = fingers === 5;
+                document.getElementById('right-hand-status').textContent = isPortalMode ? 'PORTAL 🔥' : 'DETECTED';
+                document.getElementById('right-hand-status').style.color = isPortalMode ? '#FF6600' : '#00FF88';
                 document.getElementById('right-hand-detail').textContent = `Fingers: ${fingers}`;
             } else {
                 document.getElementById('right-hand-status').textContent = 'NOT DETECTED';
+                document.getElementById('right-hand-status').style.color = '#00FF88';
                 document.getElementById('right-hand-detail').textContent = '-';
             }
         }
@@ -743,14 +769,22 @@
 
         // ==================== 粒子动画更新 ====================
         let time = 0;
+        let frameCount = 0;
         let rightHandMode = 'normal'; // 'normal' or 'nebula'
         let comboMode = false; // 双手组合模式
 
         function updateParticles() {
             time += 0.016;
+            frameCount++;
 
-            // 检测传送门模式（只需右手张开）
-            comboMode = rightHandData && rightHandData.extendedFingers === 5;
+            // 检测传送门模式（只需右手张开5指）
+            const rightFingers = rightHandData ? rightHandData.extendedFingers : 0;
+            comboMode = rightFingers === 5;
+
+            // 调试：在控制台输出手指数量
+            if (rightHandData && frameCount % 30 === 0) {
+                console.log('Right hand fingers:', rightFingers, 'Portal mode:', comboMode);
+            }
 
             // 检测右手模式（星云模式已被传送门替代，不再需要）
             rightHandMode = 'normal';
